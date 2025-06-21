@@ -40,9 +40,7 @@ class VectorStoreBuilder:
             # Additional Indian Sources
             'firstpost': 'https://www.firstpost.com/rss/home.xml',
             'news18': 'https://www.news18.com/rss/india.xml',
-            'zee_news': 'https://zeenews.india.com/rss/india-national-news.xml',
-            'hindustan_times': 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml',
-            'business_standard': 'https://www.business-standard.com/rss/home_page_top_stories.rss'
+            'hindustan_times': 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml'
         }
         
         # Updated direct websites for Indian news
