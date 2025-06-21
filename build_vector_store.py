@@ -36,12 +36,6 @@ class VectorStoreBuilder:
         
         # Updated Indian news sources with RSS feeds
         self.news_sources = {
-            # The Hindu
-            'the_hindu': 'https://www.thehindu.com/feeder/default.rss',
-            'the_hindu_national': 'https://www.thehindu.com/news/national/feeder/default.rss',
-            'the_hindu_international': 'https://www.thehindu.com/news/international/feeder/default.rss',
-            'the_hindu_business': 'https://www.thehindu.com/business/feeder/default.rss',
-            'the_hindu_sport': 'https://www.thehindu.com/sport/feeder/default.rss',
             
             # Additional Indian Sources
             'firstpost': 'https://www.firstpost.com/rss/home.xml',
@@ -53,15 +47,7 @@ class VectorStoreBuilder:
         
         # Updated direct websites for Indian news
         self.direct_websites = [
-            'https://www.thehindu.com',
-            'https://timesofindia.indiatimes.com',
-            'https://economictimes.indiatimes.com',
-            'https://indianexpress.com',
-            'https://www.firstpost.com',
-            'https://www.news18.com',
-            'https://zeenews.india.com',
-            'https://www.hindustantimes.com',
-            'https://www.business-standard.com'
+            'https://www.thehindu.com'
         ]
         
         # Headers for web scraping
