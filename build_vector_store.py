@@ -39,13 +39,11 @@ class VectorStoreBuilder:
             
             # Additional Indian Sources
             'firstpost': 'https://www.firstpost.com/rss/home.xml',
-            'news18': 'https://www.news18.com/rss/india.xml',
             'hindustan_times': 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml'
         }
         
         # Updated direct websites for Indian news
         self.direct_websites = [
-            'https://www.thehindu.com'
         ]
         
         # Headers for web scraping
