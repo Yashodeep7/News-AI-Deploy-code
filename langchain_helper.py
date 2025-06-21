@@ -19,10 +19,11 @@ class NewsRAG:
     def __init__(self):
         """Initialize the News RAG system"""
         hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN") or st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
+        if hf_token: 
+        os.environ["HUGGINGFACEHUB_API_TOKEN"] = hf_token
         self.embeddings = HuggingFaceEmbeddings(
             model_name="BAAI/bge-base-en-v1.5",
             model_kwargs={"device": "cpu"},
-            huggingfacehub_api_token=hf_token
         )
 
         self.vector_store = None
