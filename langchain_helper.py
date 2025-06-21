@@ -10,7 +10,7 @@ from langchain.schema import Document
 import re
 import logging
 import streamlit as st
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+from transformers import pipeline
 import torch
 
 # Configure logging
@@ -21,53 +21,44 @@ class VerificationAgent:
     def __init__(self):
         """Initialize the verification agent with a fast, efficient LLM"""
         try:
+            # Get HuggingFace token from environment or Streamlit secrets
+            hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN") or st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
+            if hf_token:
+                os.environ["HUGGINGFACEHUB_API_TOKEN"] = hf_token
+            
             # Using Microsoft's DialoGPT-medium for fast response generation
-            # Alternative: Use "microsoft/DialoGPT-small" for even faster responses
             model_name = "microsoft/DialoGPT-medium"
             
-            # Check if CUDA is available for faster processing
-            device = 0 if torch.cuda.is_available() else -1
+            # Use CPU for Streamlit deployment compatibility
+            device = -1  # Force CPU usage for Streamlit
             
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-                
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                device_map="auto" if torch.cuda.is_available() else None
+            self.generator = pipeline(
+                "text-generation",
+                model=model_name,
+                device=device,
+                max_length=512,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=50256  # Set pad token for DialoGPT
             )
-            
-            # Alternative: Use a text-generation pipeline for simpler implementation
-            # self.generator = pipeline(
-            #     "text-generation",
-            #     model=model_name,
-            #     tokenizer=self.tokenizer,
-            #     device=device,
-            #     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            #     max_length=512,
-            #     do_sample=True,
-            #     temperature=0.7
-            # )
             
             logger.info(f"Verification agent initialized with {model_name}")
             
         except Exception as e:
             logger.error(f"Error initializing verification agent: {str(e)}")
-            # Fallback to a simpler approach
+            # Fallback to GPT-2 for better Streamlit compatibility
             try:
                 self.generator = pipeline(
                     "text-generation",
                     model="gpt2",
-                    device=device,
-                    max_length=256
+                    device=-1,  # Force CPU
+                    max_length=256,
+                    pad_token_id=50256
                 )
                 logger.info("Fallback to GPT-2 for verification agent")
             except Exception as e2:
                 logger.error(f"Fallback initialization failed: {str(e2)}")
                 self.generator = None
-                self.model = None
-                self.tokenizer = None
 
     def check_relevance_and_quality(self, query: str, answer: str, sources: List[Dict]) -> Dict[str, Any]:
         """Check if the answer is relevant to the query and has sufficient quality"""
@@ -119,71 +110,28 @@ class VerificationAgent:
                 'needs_fallback': True
             }
 
-    def beautify_answer(self, answer: str) -> str:
-        """Beautify the answer without changing the information"""
-        try:
-            # Simple beautification: improve formatting and structure
-            beautified = answer.strip()
-            
-            # Add proper spacing after periods if missing
-            beautified = re.sub(r'\.([A-Z])', r'. \1', beautified)
-            
-            # Ensure proper paragraph breaks
-            sentences = beautified.split('. ')
-            if len(sentences) > 3:
-                # Group sentences into paragraphs (every 2-3 sentences)
-                paragraphs = []
-                current_paragraph = []
-                
-                for i, sentence in enumerate(sentences):
-                    current_paragraph.append(sentence)
-                    if (i + 1) % 3 == 0 or i == len(sentences) - 1:
-                        paragraphs.append('. '.join(current_paragraph))
-                        current_paragraph = []
-                
-                beautified = '\n\n'.join(paragraphs)
-            
-            # Add bullet points for lists if detected
-            if '\n•' in beautified or '\n-' in beautified:
-                lines = beautified.split('\n')
-                formatted_lines = []
-                for line in lines:
-                    if line.strip().startswith('•') or line.strip().startswith('-'):
-                        formatted_lines.append(f"  {line.strip()}")
-                    else:
-                        formatted_lines.append(line)
-                beautified = '\n'.join(formatted_lines)
-            
-            return beautified
-            
-        except Exception as e:
-            logger.error(f"Error beautifying answer: {str(e)}")
-            return answer
+
 
     def generate_fallback_answer(self, query: str) -> str:
         """Generate a fallback answer when sources are insufficient"""
         try:
-            if not self.model or not self.tokenizer:
+            if not self.generator:
                 return f"I don't have sufficient news sources to answer your query about '{query}'. However, based on my general knowledge, I'd recommend checking recent news outlets for the most current information on this topic."
             
             # Create a prompt for generating a helpful response
             prompt = f"User asked: {query}\n\nSince I don't have recent news sources for this query, here's what I can share based on general knowledge:"
             
-            # Tokenize and generate
-            inputs = self.tokenizer.encode(prompt, return_tensors='pt', max_length=200, truncation=True)
+            # Generate response using pipeline
+            outputs = self.generator(
+                prompt,
+                max_length=len(prompt.split()) + 100,
+                num_return_sequences=1,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=50256
+            )
             
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs,
-                    max_length=inputs.shape[1] + 150,
-                    num_return_sequences=1,
-                    temperature=0.7,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    attention_mask=torch.ones_like(inputs)
-                )
-            
-            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            generated_text = outputs[0]['generated_text']
             
             # Extract only the generated part
             fallback_answer = generated_text[len(prompt):].strip()
@@ -420,9 +368,9 @@ class NewsRAG:
             verification_result = self.verification_agent.check_relevance_and_quality(query, initial_answer, sources)
             
             if verification_result['is_sufficient']:
-                # Answer is good, beautify it
-                final_answer = self.verification_agent.beautify_answer(initial_answer)
-                verification_status = 'verified_and_beautified'
+                # Answer is good, return as is
+                final_answer = initial_answer
+                verification_status = 'verified_from_sources'
                 is_from_sources = True
             else:
                 # Answer is not sufficient, generate fallback
