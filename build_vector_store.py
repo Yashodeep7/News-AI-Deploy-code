@@ -43,13 +43,6 @@ class VectorStoreBuilder:
             'the_hindu_business': 'https://www.thehindu.com/business/feeder/default.rss',
             'the_hindu_sport': 'https://www.thehindu.com/sport/feeder/default.rss',
             
-            # Economic Times
-            'et_news': 'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
-            'et_markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
-            'et_industry': 'https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms',
-            'et_policy': 'https://economictimes.indiatimes.com/news/economy/policy/rssfeeds/1715249553.cms',
-            'et_tech': 'https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms',
-            
             # Additional Indian Sources
             'ndtv': 'https://feeds.feedburner.com/NDTV-LatestNews',
             'ndtv_business': 'https://feeds.feedburner.com/ndtvprofit-latest',
