@@ -1,0 +1,17 @@
+streamlit
+langchain
+langchain-community
+google-generativeai
+sentence-transformers
+faiss-cpu
+beautifulsoup4
+requests
+feedparser
+pandas
+python-dotenv
+huggingface-hub
+transformers
+torch
+numpy
+lxml
+

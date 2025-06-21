@@ -1,0 +1,40 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment variables and config
+.env
+*.env
+*.secret
+*.key
+
+# Vector store files
+faiss_index/
+articles_data.pickle
+chunks_metadata.pickle
+vector_store_stats.json
+
+# VSCode and editor configs
+.vscode/
+.idea/
+*.swp
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# Logs and temporary
+*.log
+*.tmp
+*.bak
+.DS_Store
+
+# Streamlit
+.streamlit/config.toml
+
+
+my/
