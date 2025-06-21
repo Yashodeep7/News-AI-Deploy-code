@@ -70,7 +70,7 @@ class VectorStoreBuilder:
             'indian_express_technology':'https://indianexpress.com/section/technology/feed/',
             'indian_express_cities':    'https://indianexpress.com/section/cities/feed/',
             'indian_express_explained': 'https://indianexpress.com/section/explained/feed/',
-            'indian_express_opinion':   'https://indianexpress.com/section/opinion/feed/'
+            'indian_express_opinion':   'https://indianexpress.com/section/opinion/feed/',
 
              # International News
             'cnn_world': 'http://rss.cnn.com/rss/edition_world.rss',
