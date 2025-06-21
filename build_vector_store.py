@@ -14,6 +14,7 @@ import logging
 from urllib.parse import urljoin, urlparse
 import json
 from dotenv import load_dotenv
+import streamlit as st
 
 # Load environment variables
 load_dotenv()
@@ -24,10 +25,13 @@ logger = logging.getLogger(__name__)
 
 class VectorStoreBuilder:
     def __init__(self):
+        hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN") or st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
         self.embeddings = HuggingFaceEmbeddings(
             model_name="BAAI/bge-base-en-v1.5",
-            model_kwargs={"device": "cpu"}
+            model_kwargs={"device": "cpu"},
+            huggingfacehub_api_token=hf_token
         )
+
         
         # Updated Indian news sources with RSS feeds
         self.news_sources = {

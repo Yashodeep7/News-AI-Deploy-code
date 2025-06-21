@@ -9,10 +9,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
 import re
 import logging
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+import streamlit as st
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,9 +18,11 @@ logger = logging.getLogger(__name__)
 class NewsRAG:
     def __init__(self):
         """Initialize the News RAG system"""
+        hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN") or st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
         self.embeddings = HuggingFaceEmbeddings(
             model_name="BAAI/bge-base-en-v1.5",
-            model_kwargs={"device": "cpu"}
+            model_kwargs={"device": "cpu"},
+            huggingfacehub_api_token=hf_token
         )
 
         self.vector_store = None
@@ -40,13 +39,13 @@ class NewsRAG:
 
     def init_gemini(self):
         try:
-            api_key = os.getenv("GEMINI_API_KEY")
+            api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY")
             if api_key:
                 genai.configure(api_key=api_key)
                 self.model = genai.GenerativeModel('gemini-2.5-flash')
                 logger.info("Gemini API initialized successfully")
             else:
-                logger.warning("Gemini API key not found in environment variables")
+                logger.warning("Gemini API key not found in environment variables or Streamlit secrets")
                 self.model = None
         except Exception as e:
             logger.error(f"Error initializing Gemini: {str(e)}")
