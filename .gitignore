@@ -13,11 +13,7 @@ build/
 *.secret
 *.key
 
-# Vector store files
-faiss_index/
-articles_data.pickle
-chunks_metadata.pickle
-vector_store_stats.json
+
 
 # VSCode and editor configs
 .vscode/
