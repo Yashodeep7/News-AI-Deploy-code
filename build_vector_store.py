@@ -38,13 +38,133 @@ class VectorStoreBuilder:
         
         # Updated Indian news sources with RSS feeds
         self.news_sources = {
+            # The Hindu
+            'the_hindu': 'https://www.thehindu.com/feeder/default.rss',
+            'the_hindu_national': 'https://www.thehindu.com/news/national/feeder/default.rss',
+            'the_hindu_international': 'https://www.thehindu.com/news/international/feeder/default.rss',
+            'the_hindu_business': 'https://www.thehindu.com/business/feeder/default.rss',
+            'the_hindu_sport': 'https://www.thehindu.com/sport/feeder/default.rss',
             
-            'news18': 'https://www.news18.com/rss/india.xml'
+            # Times of India
+            'toi_india': 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+            'toi_world': 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',
+            'toi_business': 'https://timesofindia.indiatimes.com/rssfeeds/1898055.cms',
+            'toi_sports': 'https://timesofindia.indiatimes.com/rssfeeds/4719148.cms',
+            'toi_entertainment': 'https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms',
+            
+            # Economic Times
+            'et_news': 'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
+            'et_markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+            'et_industry': 'https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms',
+            'et_policy': 'https://economictimes.indiatimes.com/news/economy/policy/rssfeeds/1715249553.cms',
+            'et_tech': 'https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms',
+
+            # The Indian Express official feeds
+            'indian_express_all':       'https://indianexpress.com/feed/',
+            'indian_express_india':     'https://indianexpress.com/section/india/feed/',
+            'indian_express_world':     'https://indianexpress.com/section/world/feed/',
+            'indian_express_politics':  'https://indianexpress.com/section/politics/feed/',
+            'indian_express_business':  'https://indianexpress.com/section/business/feed/',
+            'indian_express_sports':    'https://indianexpress.com/section/sports/feed/',
+            'indian_express_entertainment':'https://indianexpress.com/section/entertainment/feed/',
+            'indian_express_technology':'https://indianexpress.com/section/technology/feed/',
+            'indian_express_cities':    'https://indianexpress.com/section/cities/feed/',
+            'indian_express_explained': 'https://indianexpress.com/section/explained/feed/',
+            'indian_express_opinion':   'https://indianexpress.com/section/opinion/feed/'
+
+             # International News
+            'cnn_world': 'http://rss.cnn.com/rss/edition_world.rss',
+            'bbc_world': 'http://feeds.bbci.co.uk/news/world/rss.xml',
+            'al_jazeera': 'https://www.aljazeera.com/xml/rss/all.xml',
+
+            # Politics
+            'npr_politics': 'https://feeds.npr.org/1014/rss.xml',
+            'ap_politics': 'https://apnews.com/rss/apf-politics',
+            'politico': 'https://www.politico.com/rss/politics08.xml',
+        
+            # Indian Finance & Markets
+            'mint_news': 'https://www.livemint.com/rss/news',
+            'business_standard_top': 'https://www.business-standard.com/rss/home_page_top_stories.rss',
+            'business_standard_sports': 'https://www.business-standard.com/rss/sports',
+        
+            # Sports
+            'ndtv_sports': 'https://feeds.feedburner.com/ndtvsports-latest',
+        
+            # Global Business
+            'yahoo_finance': 'https://finance.yahoo.com/news/rssindex',
+            'seeking_alpha': 'https://seekingalpha.com/feed.xml',
+        
+            # Tech / Innovation
+            'techcrunch': 'http://feeds.feedburner.com/TechCrunch/',
+            'wired': 'https://www.wired.com/feed/rss',
+        
+            # Canada/Global News
+            'global_news_world': 'https://globalnews.ca/world/feed/',
+            'global_news_politics': 'https://globalnews.ca/politics/feed/',
+
+            'cnn_world': 'http://rss.cnn.com/rss/edition_world.rss',
+            'bbc_world': 'http://feeds.bbci.co.uk/news/world/rss.xml',
+            'al_jazeera': 'https://www.aljazeera.com/xml/rss/all.xml',
+            'reuters_world': 'http://feeds.reuters.com/Reuters/worldNews',
+            'ap_politics': 'https://apnews.com/rss/apf-politics',
+            'npr_politics': 'https://feeds.npr.org/1014/rss.xml',
+            'politico': 'https://www.politico.com/rss/politics08.xml',
+        
+            # 📈 Global Business & Tech
+            'yahoo_finance': 'https://finance.yahoo.com/news/rssindex',
+            'seeking_alpha': 'https://seekingalpha.com/feed.xml',
+            'techcrunch': 'http://feeds.feedburner.com/TechCrunch/',
+            'wired': 'https://www.wired.com/feed/rss',
+        
+            # 🇮🇳 India: Business, Economy & Finance
+            'mint_news': 'https://www.livemint.com/rss/news',
+            'mint_politics': 'https://www.livemint.com/rss/politics',
+            'financial_express': 'https://www.financialexpress.com/rss/section/economy/',
+            'businessuniverse_latest': 'https://www.businessuniverse.in/rss/latest-posts',
+            'businessuniverse_economy': 'https://www.businessuniverse.in/rss/category/india-news',
+            'businessuniverse_stock': 'https://www.businessuniverse.in/rss/category/stock-market',
+        
+            # 🏏 India Sports & Entertainment
+            'ndtv_sports': 'https://feeds.feedburner.com/ndtvsports-latest',
+            'abp_sports': 'https://news.abplive.com/sports/feed',
+            'abp_entertainment': 'https://news.abplive.com/entertainment/feed',
+        
+            # 🗞️ Hindi / Regional News
+            'oneindia_hindi_news': 'https://hindi.oneindia.com/rss/feeds/hindi-news-fb.xml',
+            'oneindia_hindi_sports': 'https://hindi.oneindia.com/rss/feeds/hindi-sports-fb.xml',
+            'altnews': 'https://altnews.in/feed',
+        
+            # 🇨🇦 Canada / Global Aggregates
+            'globalnews_world': 'https://globalnews.ca/world/feed/',
+            'vancouver_sun': 'https://vancouversun.com/feed/?x=1',
+        
+            # 🌍 Misc / Other India
+            'abplive_home': 'https://news.abplive.com/home/feed',
+            'abplive_technology': 'https://news.abplive.com/technology/feed',
+            'india_together_environment': 'https://indiatogether.org/rss_feeds_list',
+                    
+            'ndtv': 'https://feeds.feedburner.com/NDTV-LatestNews',
+            'ndtv_business': 'https://feeds.feedburner.com/ndtvprofit-latest',
+            'firstpost': 'https://www.firstpost.com/rss/home.xml',
+            'news18': 'https://www.news18.com/rss/india.xml',
+            'zee_news': 'https://zeenews.india.com/rss/india-national-news.xml',
+            'hindustan_times': 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml',
+            'business_standard': 'https://www.business-standard.com/rss/home_page_top_stories.rss'
             
         }
         
         # Updated direct websites for Indian news
         self.direct_websites = [
+            'https://www.thehindu.com',
+            'https://timesofindia.indiatimes.com',
+            'https://economictimes.indiatimes.com',
+            'https://indianexpress.com',
+            'https://www.ndtv.com',
+            'https://www.firstpost.com',
+            'https://www.news18.com',
+            'https://zeenews.india.com',
+            'https://www.hindustantimes.com',
+            'https://www.business-standard.com'
         ]
         
         # Headers for web scraping
