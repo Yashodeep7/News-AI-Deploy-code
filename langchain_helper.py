@@ -10,10 +10,192 @@ from langchain.schema import Document
 import re
 import logging
 import streamlit as st
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class VerificationAgent:
+    def __init__(self):
+        """Initialize the verification agent with a fast, efficient LLM"""
+        try:
+            # Using Microsoft's DialoGPT-medium for fast response generation
+            # Alternative: Use "microsoft/DialoGPT-small" for even faster responses
+            model_name = "microsoft/DialoGPT-medium"
+            
+            # Check if CUDA is available for faster processing
+            device = 0 if torch.cuda.is_available() else -1
+            
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+                
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                device_map="auto" if torch.cuda.is_available() else None
+            )
+            
+            # Alternative: Use a text-generation pipeline for simpler implementation
+            # self.generator = pipeline(
+            #     "text-generation",
+            #     model=model_name,
+            #     tokenizer=self.tokenizer,
+            #     device=device,
+            #     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            #     max_length=512,
+            #     do_sample=True,
+            #     temperature=0.7
+            # )
+            
+            logger.info(f"Verification agent initialized with {model_name}")
+            
+        except Exception as e:
+            logger.error(f"Error initializing verification agent: {str(e)}")
+            # Fallback to a simpler approach
+            try:
+                self.generator = pipeline(
+                    "text-generation",
+                    model="gpt2",
+                    device=device,
+                    max_length=256
+                )
+                logger.info("Fallback to GPT-2 for verification agent")
+            except Exception as e2:
+                logger.error(f"Fallback initialization failed: {str(e2)}")
+                self.generator = None
+                self.model = None
+                self.tokenizer = None
+
+    def check_relevance_and_quality(self, query: str, answer: str, sources: List[Dict]) -> Dict[str, Any]:
+        """Check if the answer is relevant to the query and has sufficient quality"""
+        try:
+            # Simple relevance check based on keyword overlap
+            query_words = set(query.lower().split())
+            answer_words = set(answer.lower().split())
+            
+            # Remove common stop words for better relevance scoring
+            stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were'}
+            query_words -= stop_words
+            answer_words -= stop_words
+            
+            # Calculate relevance score
+            if len(query_words) > 0:
+                relevance_score = len(query_words.intersection(answer_words)) / len(query_words)
+            else:
+                relevance_score = 0.0
+            
+            # Check answer quality (length, structure, etc.)
+            quality_score = 0.0
+            if len(answer) > 50:  # Minimum length check
+                quality_score += 0.3
+            if len(answer.split('.')) > 1:  # Multiple sentences
+                quality_score += 0.3
+            if any(source.get('title', '') in answer for source in sources):  # References sources
+                quality_score += 0.4
+            
+            # Determine if answer is sufficient
+            is_relevant = relevance_score >= 0.3  # At least 30% keyword overlap
+            is_quality = quality_score >= 0.5  # At least 50% quality score
+            has_sources = len(sources) > 0
+            
+            return {
+                'is_sufficient': is_relevant and is_quality and has_sources,
+                'relevance_score': relevance_score,
+                'quality_score': quality_score,
+                'has_sources': has_sources,
+                'needs_fallback': not (is_relevant and is_quality and has_sources)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in relevance check: {str(e)}")
+            return {
+                'is_sufficient': False,
+                'relevance_score': 0.0,
+                'quality_score': 0.0,
+                'has_sources': False,
+                'needs_fallback': True
+            }
+
+    def beautify_answer(self, answer: str) -> str:
+        """Beautify the answer without changing the information"""
+        try:
+            # Simple beautification: improve formatting and structure
+            beautified = answer.strip()
+            
+            # Add proper spacing after periods if missing
+            beautified = re.sub(r'\.([A-Z])', r'. \1', beautified)
+            
+            # Ensure proper paragraph breaks
+            sentences = beautified.split('. ')
+            if len(sentences) > 3:
+                # Group sentences into paragraphs (every 2-3 sentences)
+                paragraphs = []
+                current_paragraph = []
+                
+                for i, sentence in enumerate(sentences):
+                    current_paragraph.append(sentence)
+                    if (i + 1) % 3 == 0 or i == len(sentences) - 1:
+                        paragraphs.append('. '.join(current_paragraph))
+                        current_paragraph = []
+                
+                beautified = '\n\n'.join(paragraphs)
+            
+            # Add bullet points for lists if detected
+            if '\n•' in beautified or '\n-' in beautified:
+                lines = beautified.split('\n')
+                formatted_lines = []
+                for line in lines:
+                    if line.strip().startswith('•') or line.strip().startswith('-'):
+                        formatted_lines.append(f"  {line.strip()}")
+                    else:
+                        formatted_lines.append(line)
+                beautified = '\n'.join(formatted_lines)
+            
+            return beautified
+            
+        except Exception as e:
+            logger.error(f"Error beautifying answer: {str(e)}")
+            return answer
+
+    def generate_fallback_answer(self, query: str) -> str:
+        """Generate a fallback answer when sources are insufficient"""
+        try:
+            if not self.model or not self.tokenizer:
+                return f"I don't have sufficient news sources to answer your query about '{query}'. However, based on my general knowledge, I'd recommend checking recent news outlets for the most current information on this topic."
+            
+            # Create a prompt for generating a helpful response
+            prompt = f"User asked: {query}\n\nSince I don't have recent news sources for this query, here's what I can share based on general knowledge:"
+            
+            # Tokenize and generate
+            inputs = self.tokenizer.encode(prompt, return_tensors='pt', max_length=200, truncation=True)
+            
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    inputs,
+                    max_length=inputs.shape[1] + 150,
+                    num_return_sequences=1,
+                    temperature=0.7,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    attention_mask=torch.ones_like(inputs)
+                )
+            
+            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            
+            # Extract only the generated part
+            fallback_answer = generated_text[len(prompt):].strip()
+            
+            # Add disclaimer
+            disclaimer = "⚠️ **Note**: This information is not from recent news sources but based on my general knowledge. For the most current information, please check latest news outlets."
+            
+            return f"{disclaimer}\n\n{fallback_answer}"
+            
+        except Exception as e:
+            logger.error(f"Error generating fallback answer: {str(e)}")
+            return f"I don't have sufficient recent news sources to answer your query about '{query}'. Please try a different search term or check the latest news directly from reliable news sources."
 
 class NewsRAG:
     def __init__(self):
@@ -30,6 +212,9 @@ class NewsRAG:
         self.load_vector_store()
         self.articles_data = self.load_articles_data()
         self.init_gemini()
+        
+        # Initialize verification agent
+        self.verification_agent = VerificationAgent()
 
         self.query_templates = {
             'summary': "Provide a comprehensive summary of the following news articles:\n\n{context}",
@@ -203,15 +388,20 @@ class NewsRAG:
             docs = self.retrieve_relevant_documents(query, k=15)
 
             if not docs:
+                # No documents found, use verification agent for fallback
+                fallback_answer = self.verification_agent.generate_fallback_answer(query)
                 return {
-                    'answer': "I couldn't find any relevant news articles for your query. Please try a different question or check if the vector store has been built.",
+                    'answer': fallback_answer,
                     'sources': [],
-                    'query_type': query_type
+                    'query_type': query_type,
+                    'is_from_sources': False,
+                    'verification_status': 'fallback_generated'
                 }
 
             context = self.prepare_context(docs, query_type)
-            answer = self.generate_response(query, context, query_type)
+            initial_answer = self.generate_response(query, context, query_type)
 
+            # Prepare sources
             sources = []
             seen_urls = set()
             for doc in docs[:5]:
@@ -226,19 +416,42 @@ class NewsRAG:
                         'content': doc.page_content[:200] + '...' if len(doc.page_content) > 200 else doc.page_content
                     })
 
+            # Verify the answer quality and relevance
+            verification_result = self.verification_agent.check_relevance_and_quality(query, initial_answer, sources)
+            
+            if verification_result['is_sufficient']:
+                # Answer is good, beautify it
+                final_answer = self.verification_agent.beautify_answer(initial_answer)
+                verification_status = 'verified_and_beautified'
+                is_from_sources = True
+            else:
+                # Answer is not sufficient, generate fallback
+                fallback_answer = self.verification_agent.generate_fallback_answer(query)
+                final_answer = fallback_answer
+                verification_status = 'insufficient_fallback_generated'
+                is_from_sources = False
+                sources = []  # Clear sources since we're not using them
+
             return {
-                'answer': answer,
+                'answer': final_answer,
                 'sources': sources,
                 'query_type': query_type,
-                'context_length': len(context)
+                'context_length': len(context),
+                'is_from_sources': is_from_sources,
+                'verification_status': verification_status,
+                'verification_details': verification_result
             }
 
         except Exception as e:
             logger.error(f"Error in query method: {str(e)}")
+            # Generate fallback for errors
+            fallback_answer = self.verification_agent.generate_fallback_answer(query)
             return {
-                'answer': f"An error occurred while processing your query: {str(e)}",
+                'answer': fallback_answer,
                 'sources': [],
-                'query_type': 'error'
+                'query_type': 'error',
+                'is_from_sources': False,
+                'verification_status': 'error_fallback_generated'
             }
 
 def news_ai_agent(query: str) -> Dict[str, Any]:
@@ -256,5 +469,7 @@ def news_ai_agent(query: str) -> Dict[str, Any]:
 
     return {
         'answer': result.get('answer', 'No answer generated'),
-        'sources': formatted_sources
+        'sources': formatted_sources,
+        'is_from_sources': result.get('is_from_sources', False),
+        'verification_status': result.get('verification_status', 'unknown')
     }
