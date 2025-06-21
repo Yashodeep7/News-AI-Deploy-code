@@ -15,6 +15,8 @@ from urllib.parse import urljoin, urlparse
 import json
 from dotenv import load_dotenv
 import streamlit as st
+import subprocess
+import shutil
 
 # Load environment variables
 load_dotenv()
@@ -31,15 +33,15 @@ class VectorStoreBuilder:
         self.embeddings = HuggingFaceEmbeddings(
             model_name="BAAI/bge-base-en-v1.5",
             model_kwargs={"device": "cpu"},
+            huggingfacehub_api_token=hf_token
         )
 
         
         # Updated Indian news sources with RSS feeds
         self.news_sources = {
             
-            # Additional Indian Sources
-            'firstpost': 'https://www.firstpost.com/rss/home.xml',
-            'hindustan_times': 'https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml'
+            'news18': 'https://www.news18.com/rss/india.xml'
+            
         }
         
         # Updated direct websites for Indian news
@@ -62,6 +64,59 @@ class VectorStoreBuilder:
             length_function=len,
             separators=["\n\n", "\n", ". ", " ", ""]
         )
+
+    def commit_and_push_to_github(self):
+        """Commit and push the vector store files to GitHub repository"""
+        try:
+            # Get GitHub token from secrets or environment
+            github_token = os.getenv("GITHUB_TOKEN") or st.secrets.get("GITHUB_TOKEN")
+            repo_url = os.getenv("GITHUB_REPO_URL") or st.secrets.get("GITHUB_REPO_URL")
+            
+            if not github_token:
+                logger.warning("No GitHub token found. Files saved locally only.")
+                return False
+            
+            # Configure git with token authentication
+            if repo_url and github_token:
+                # Extract repo info from URL
+                if "github.com/" in repo_url:
+                    repo_path = repo_url.split("github.com/")[-1].replace(".git", "")
+                    authenticated_url = f"https://{github_token}@github.com/{repo_path}.git"
+                    
+                    # Set git config
+                    subprocess.run(["git", "config", "--global", "user.email", "streamlit@app.com"], check=True)
+                    subprocess.run(["git", "config", "--global", "user.name", "Streamlit App"], check=True)
+                    
+                    # Add files to git
+                    files_to_commit = [
+                        "faiss_index",
+                        "articles_data.pickle", 
+                        "chunks_metadata.pickle",
+                        "vector_store_stats.json"
+                    ]
+                    
+                    for file_path in files_to_commit:
+                        if os.path.exists(file_path):
+                            subprocess.run(["git", "add", file_path], check=True)
+                    
+                    # Commit changes
+                    commit_message = f"Update vector store - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    subprocess.run(["git", "commit", "-m", commit_message], check=True)
+                    
+                    # Push to repository
+                    subprocess.run(["git", "push", authenticated_url, "main"], check=True)
+                    
+                    logger.info("Successfully pushed vector store files to GitHub")
+                    return True
+            
+            return False
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git command failed: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Error pushing to GitHub: {str(e)}")
+            return False
 
     def scrape_rss_feeds(self):
         """Scrape news from RSS feeds"""
@@ -358,6 +413,15 @@ class VectorStoreBuilder:
             
             # Create summary statistics
             self.create_summary_stats(filtered_articles, documents)
+            
+            # Commit and push to GitHub
+            logger.info("Pushing vector store files to GitHub...")
+            github_success = self.commit_and_push_to_github()
+            
+            if github_success:
+                logger.info("Vector store files successfully pushed to GitHub!")
+            else:
+                logger.warning("Files saved locally but not pushed to GitHub")
             
             return True
             
