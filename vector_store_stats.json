@@ -1,13 +1,13 @@
 {
   "total_articles": 15,
-  "total_chunks": 99,
+  "total_chunks": 105,
   "sources": [
     "news18"
   ],
   "source_counts": {
     "news18": 15
   },
-  "build_time": "2025-06-21 10:02:20",
-  "avg_chunks_per_article": 6.6,
-  "avg_content_length": 4191.933333333333
+  "build_time": "2025-06-21 11:04:18",
+  "avg_chunks_per_article": 7.0,
+  "avg_content_length": 4394.533333333334
 }
