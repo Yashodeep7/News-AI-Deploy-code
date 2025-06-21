@@ -43,27 +43,12 @@ class VectorStoreBuilder:
             'the_hindu_business': 'https://www.thehindu.com/business/feeder/default.rss',
             'the_hindu_sport': 'https://www.thehindu.com/sport/feeder/default.rss',
             
-            # Times of India
-            'toi_india': 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
-            'toi_world': 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',
-            'toi_business': 'https://timesofindia.indiatimes.com/rssfeeds/1898055.cms',
-            'toi_sports': 'https://timesofindia.indiatimes.com/rssfeeds/4719148.cms',
-            'toi_entertainment': 'https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms',
-            
             # Economic Times
             'et_news': 'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
             'et_markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
             'et_industry': 'https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms',
             'et_policy': 'https://economictimes.indiatimes.com/news/economy/policy/rssfeeds/1715249553.cms',
             'et_tech': 'https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms',
-            
-            # Indian Express
-            'indian_express': 'https://indianexpress.com/feed/',
-            'ie_india': 'https://indianexpress.com/section/india/feed/',
-            'ie_world': 'https://indianexpress.com/section/world/feed/',
-            'ie_business': 'https://indianexpress.com/section/business/feed/',
-            'ie_sports': 'https://indianexpress.com/section/sports/feed/',
-            'ie_opinion': 'https://indianexpress.com/section/opinion/feed/',
             
             # Additional Indian Sources
             'ndtv': 'https://feeds.feedburner.com/NDTV-LatestNews',
