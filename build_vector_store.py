@@ -44,8 +44,6 @@ class VectorStoreBuilder:
             'the_hindu_sport': 'https://www.thehindu.com/sport/feeder/default.rss',
             
             # Additional Indian Sources
-            'ndtv': 'https://feeds.feedburner.com/NDTV-LatestNews',
-            'ndtv_business': 'https://feeds.feedburner.com/ndtvprofit-latest',
             'firstpost': 'https://www.firstpost.com/rss/home.xml',
             'news18': 'https://www.news18.com/rss/india.xml',
             'zee_news': 'https://zeenews.india.com/rss/india-national-news.xml',
@@ -59,7 +57,6 @@ class VectorStoreBuilder:
             'https://timesofindia.indiatimes.com',
             'https://economictimes.indiatimes.com',
             'https://indianexpress.com',
-            'https://www.ndtv.com',
             'https://www.firstpost.com',
             'https://www.news18.com',
             'https://zeenews.india.com',
