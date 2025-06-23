@@ -247,7 +247,7 @@ class NewsRAG:
                         'source': doc.metadata.get('source', 'Unknown Source'),
                         'url': url,
                         'published': doc.metadata.get('published', ''),
-                        'content': doc.page_content[:200] + '...' if len(doc.page_content) > 200 else doc.page_content
+                        'content': doc.page_content
                     })
 
             return {
