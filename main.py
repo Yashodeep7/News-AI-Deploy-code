@@ -19,27 +19,13 @@ def cleanup_memory():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-# Function to safely build vector store
-@st.cache_data(ttl=3600)  # Cache for 1 hour to prevent repeated builds
-def build_vector_store_cached():
-    """Cached version of vector store building"""
-    try:
-        builder = VectorStoreBuilder()
-        success = builder.build_vector_store()
-        # Cleanup after building
-        del builder
-        cleanup_memory()
-        return success
-    except Exception as e:
-        st.error(f"Error building vector store: {str(e)}")
-        cleanup_memory()
-        return False
 
 # Build vector store on button click
 if st.button("Get Latest News"):
     with st.spinner("Scraping news and building vector store..."):
         try:
-            success = build_vector_store_cached()
+            builder = VectorStoreBuilder()
+            success = builder.build_vector_store()
             if success:
                 st.success("✅ Vector store built and updated in repository!")
                 st.info("The latest news data has been updated for everyone.")
