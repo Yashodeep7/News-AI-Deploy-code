@@ -32,10 +32,7 @@ class NewsRAG:
         self.init_gemini()
 
         self.query_templates = {
-            'summary': "Provide a comprehensive summary of the following news articles:\n\n{context}",
-            'headlines': "Extract and list the main headlines from the following news content:\n\n{context}",
-            'specific': "Based on the following news articles, answer this question: {question}\n\nNews content:\n{context}",
-            'today': "From the following recent news articles, provide today's key news highlights:\n\n{context}"
+            'specific': "Based on the following news articles, answer this question: {question}\n\nNews content:\n{context}"
         }
 
     def init_gemini(self):
@@ -80,80 +77,83 @@ class NewsRAG:
             logger.error(f"Error loading articles data: {str(e)}")
             return []
 
-    def classify_query(self, query: str) -> str:
-        query_lower = query.lower()
-        if any(word in query_lower for word in ['headline', 'headlines', 'top news', 'main news']):
-            return 'headlines'
-        elif any(word in query_lower for word in ['today', "today's", 'current', 'latest', 'recent']):
-            return 'today'
-        elif any(word in query_lower for word in ['summarize', 'summary', 'overview', 'brief']):
-            return 'summary'
-        else:
-            return 'specific'
 
-    def enhance_query(self, query: str) -> str:
-        """Enhanced query expansion with better category and time handling"""
-        enhanced_query = query
+
+    def generate_hypothetical_document(self, query: str) -> Dict[str, Any]:
+        """
+        Generate a hypothetical document using HyDE approach.
+        This creates an ideal answer that helps retrieve better documents.
+        Returns a dictionary with answer and boolean indicating if it's news-related.
+        """
+        if not self.model:
+            logger.warning("Gemini API not available for HyDE generation")
+            return {"answer": query, "is_news_related": True}
         
-        # Add date context for time-sensitive queries
-        if any(word in query.lower() for word in ['today', 'current', 'latest', 'recent']):
-            enhanced_query += f" {datetime.now().strftime('%Y-%m-%d')}"
-        
-        # Add context for news-related queries
-        if not any(word in query.lower() for word in ['news', 'article', 'report']):
-            enhanced_query += " news article"
-        
-        return enhanced_query
+        try:
+            hyde_prompt = f"""
+            You are a news expert. Given the following question or topic, first determine if this is a news-related query.
+            If the query is not related to news then generate the answer as per your knowledge. You are also a human.
+            
+            
+            If it IS news-related: write a detailed, informative news article excerpt that would perfectly answer this question. 
+            Write it as if it's from a real news article with specific details, facts, and context.
+            
+            If it is NOT news-related: provide a direct answer based on your general knowledge.
+            
+            Question/Topic: {query}
+            
+            Strictly Respond ONLY with valid python dictionary format in exactly this format (no extra text, no markdown, no explanations):
+            {{
+                "answer": "your response here (either hypothetical news article excerpt for news queries or direct answer for non-news queries)",
+                "is_news_related": true/false
+            }}
+            
+            For news-related queries: Write a comprehensive news article excerpt (2-3 paragraphs) that would ideally contain the answer to this question.
+            For non-news queries: Provide a direct, helpful answer based on your knowledge.
+            """
+            
+            response = self.model.generate_content(hyde_prompt)
+            response_text = response.text.strip()
+            print(response_text)
+            
+            # Try to parse JSON response
+            try:
+                result = json.loads(response_text)
+                logger.info(f"Generated response for query: {query[:50]}... (News-related: {result.get('is_news_related', True)})")
+                return result
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                logger.warning("Failed to parse JSON response, treating as news-related")
+                return {"answer": response_text, "is_news_related": True}
+            
+        except Exception as e:
+            logger.error(f"Error generating hypothetical document: {str(e)}")
+            return {"answer": query, "is_news_related": True}
 
     def retrieve_relevant_documents(self, query: str, k: int = 15) -> List[Document]:
-        """Enhanced document retrieval with better filtering"""
+        """Enhanced document retrieval using HyDE approach"""
         if not self.vector_store:
             logger.error("Vector store not loaded!")
             return []
 
         try:
-            enhanced_query = self.enhance_query(query)
-            docs = self.vector_store.similarity_search(enhanced_query, k=k*2)  # Get more docs initially
+            # Generate hypothetical document using HyDE
+            hyde_result = self.generate_hypothetical_document(query)
+            hypothetical_doc = hyde_result["answer"]
+            
+            # Use the hypothetical document for similarity search
+            docs = self.vector_store.similarity_search(hypothetical_doc, k=k)
 
-            # Filter by time constraints
-            if any(word in query.lower() for word in ['today', 'current', 'latest']):
-                docs = self.filter_recent_docs(docs, days_back=1)  # More strict for "today"
-            elif 'recent' in query.lower():
-                docs = self.filter_recent_docs(docs, days_back=7)
-
-            # Return top k documents after filtering
-            filtered_docs = docs[:k]
-            logger.info(f"Retrieved {len(filtered_docs)} relevant documents after filtering")
-            return filtered_docs
+            logger.info(f"Retrieved {len(docs)} relevant documents using HyDE")
+            return docs
 
         except Exception as e:
             logger.error(f"Error retrieving documents: {str(e)}")
             return []
 
-    def filter_recent_docs(self, docs: List[Document], days_back: int = 7) -> List[Document]:
-        cutoff_date = datetime.now() - timedelta(days=days_back)
-        recent_docs = []
 
-        for doc in docs:
-            try:
-                published = doc.metadata.get('published', '')
-                if published:
-                    for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%a, %d %b %Y %H:%M:%S %Z']:
-                        try:
-                            doc_date = datetime.strptime(published, fmt)
-                            if doc_date >= cutoff_date:
-                                recent_docs.append(doc)
-                            break
-                        except ValueError:
-                            continue
-                else:
-                    recent_docs.append(doc)
-            except Exception:
-                recent_docs.append(doc)
 
-        return recent_docs if recent_docs else docs[:len(docs)//2]
-
-    def prepare_context(self, docs: List[Document], query_type: str) -> str:
+    def prepare_context(self, docs: List[Document]) -> str:
         if not docs:
             return "No relevant articles found."
 
@@ -170,28 +170,24 @@ class NewsRAG:
             url = doc.metadata.get('url', '')
             published = doc.metadata.get('published', '')
 
-            if query_type == 'headlines':
-                context_parts.append(f"\u2022 {title} ({source})")
-            else:
-                article_text = f"**{title}**\n"
-                article_text += f"Source: {source}\n"
-                if published:
-                    article_text += f"Published: {published}\n"
-                article_text += f"Content: {doc.page_content}\n"
-                if url:
-                    article_text += f"URL: {url}\n"
-                article_text += "---\n"
-                context_parts.append(article_text)
+            article_text = f"**{title}**\n"
+            article_text += f"Source: {source}\n"
+            if published:
+                article_text += f"Published: {published}\n"
+            article_text += f"Content: {doc.page_content}\n"
+            if url:
+                article_text += f"URL: {url}\n"
+            article_text += "---\n"
+            context_parts.append(article_text)
 
         return "\n".join(context_parts)
 
-    def generate_response(self, query: str, context: str, query_type: str) -> str:
+    def generate_response(self, query: str, context: str) -> str:
         if not self.model:
             return "Gemini API not available. Please check your API key."
 
         try:
-            template = self.query_templates.get(query_type, self.query_templates['specific'])
-            prompt = template.format(question=query, context=context) if query_type == 'specific' else template.format(context=context)
+            prompt = f"Based on the following news articles, answer this question: {query}\n\nNews content:\n{context}"
             
             # Enhanced instructions for better response generation
             instructions = f"""
@@ -201,13 +197,12 @@ class NewsRAG:
             Query: {query}
             
             Guidelines:
-            - If you're asked for headlines, provide a clear list.
-            - If you're asked for a summary, provide key points and important details.
-            - If you're asked a specific question, answer it directly using ONLY the information from the articles.
+            - Answer the question directly using ONLY the information from the articles.
             - Always mention the sources when relevant.
             - If the articles don't contain information to answer the specific query, say so clearly.
-            - No preamble. Direct answer.
-            - Focus on the specific topic requested (e.g., if sports is asked, focus only on sports content).
+            - No preamble. Direct answer. Reduce redundancy in your answer. Don''t write that I provided you articles.
+            - Highlight important points and keywords in your answer. Make your answer presentable.
+            - Focus on the specific topic requested.
             """
             
             full_prompt = instructions + "\n\n" + prompt
@@ -220,20 +215,30 @@ class NewsRAG:
     def query(self, query: str) -> Dict[str, Any]:
         try:
             logger.info(f"Processing query: {query}")
-            query_type = self.classify_query(query)
-            logger.info(f"Query type: {query_type}")
+            
+            # First check if the query is news-related
+            hyde_result = self.generate_hypothetical_document(query)
+            
+            # If not news-related, return the direct answer
+            if not hyde_result.get("is_news_related", True):
+                return {
+                    'answer': hyde_result["answer"],
+                    'sources': [],
+                    'is_from_sources': False
+                }
+            
+            # Continue with normal flow for news-related queries
             docs = self.retrieve_relevant_documents(query, k=15)
 
             if not docs:
                 return {
                     'answer': "No relevant articles found for your query. Please try rephrasing your question or check for different keywords.",
                     'sources': [],
-                    'query_type': query_type,
                     'is_from_sources': False
                 }
 
-            context = self.prepare_context(docs, query_type)
-            answer = self.generate_response(query, context, query_type)
+            context = self.prepare_context(docs)
+            answer = self.generate_response(query, context)
 
             # Prepare sources
             sources = []
@@ -253,7 +258,6 @@ class NewsRAG:
             return {
                 'answer': answer,
                 'sources': sources,
-                'query_type': query_type,
                 'context_length': len(context),
                 'is_from_sources': True
             }
@@ -263,7 +267,6 @@ class NewsRAG:
             return {
                 'answer': f"An error occurred while processing your query: {str(e)}",
                 'sources': [],
-                'query_type': 'error',
                 'is_from_sources': False
             }
 
