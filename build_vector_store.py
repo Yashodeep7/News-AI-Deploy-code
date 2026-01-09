@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import feedparser
 import pandas as pd
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
